@@ -1,0 +1,63 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; script-src 'self'; style-src 'self'; img-src 'self' data:; connect-src https://api.github.com; font-src 'self'; base-uri 'none'; form-action 'none'; object-src 'none'">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="robots" content="noindex, nofollow">
+  <meta name="referrer" content="no-referrer">
+  <meta name="theme-color" content="#fafafa">
+  <title>写作台 · fen-dada</title>
+  <link rel="icon" type="image/svg+xml" href="/favicon.svg">
+  <link rel="stylesheet" href="/style.css">
+  <link rel="stylesheet" href="/admin/admin.css">
+  <script type="module" src="/admin/admin.js"></script>
+</head>
+<body>
+  <header class="desk-header">
+    <a class="brand" href="/">fen-dada<span class="brand-point">.</span></a>
+    <span class="desk-label">写作台</span>
+    <a class="return-blog" href="/">返回博客 ↗</a>
+    <button id="connect" class="button primary" type="button">连接 GitHub</button>
+    <button id="disconnect" class="button" type="button" hidden>退出连接</button>
+  </header>
+  <main class="desk-main">
+    <div class="desk-intro"><div><p class="eyebrow">WRITE / PUBLISH</p><h1>写下新的一页。</h1></div><p id="connection-status">尚未连接，可先导入与编辑。</p></div>
+    <div id="notice" class="notice" role="status" aria-live="polite" hidden></div>
+    <div id="restore-bar" class="restore-bar" hidden><span>有一份保存在这台设备上的草稿。</span><button type="button" id="restore">恢复草稿</button></div>
+    <div class="desk-layout">
+      <aside class="library" aria-label="作品管理">
+        <button id="new-post" class="button primary wide" type="button">＋ 新建作品</button>
+        <div class="library-title"><h2>已有作品</h2><button id="refresh" class="quiet-button" type="button" disabled>刷新</button></div>
+        <p id="library-note" class="help">连接 GitHub 后，可以在这里修改已发布的作品。</p>
+        <div id="entries" class="entries"></div>
+        <div class="library-tip"><span>从 Word 开始</span><p>导入 .docx 后检查内容，选择随笔或小说，再点击发布。</p><p>草稿只保存在本机浏览器；发布后的正文和图片会公开。</p></div>
+      </aside>
+      <section class="editor-panel" aria-label="作品编辑器">
+        <div class="editor-toolbar"><span id="edit-state">新作品</span><div class="toolbar-actions"><button id="import-button" class="button" type="button">↑ 导入文件</button><button id="download" class="button" type="button">下载备份</button></div></div>
+        <input id="import-file" type="file" accept=".docx,.md,.markdown,.txt" hidden>
+        <p class="import-caption">支持 Word（.docx）、Markdown 和 TXT，也可以直接在下方写作。</p>
+        <form id="editor-form" novalidate>
+          <div class="field"><label for="title">标题</label><input id="title" name="title" placeholder="给这篇作品起个名字" maxlength="200" required></div>
+          <div class="field-row"><div class="field"><label for="kind">作品类型</label><select id="kind" name="kind"><option value="essays">随笔</option><option value="fiction">小说 / 章节</option></select></div><div class="field"><label for="date">发布日期</label><input id="date" name="date" type="date" required></div></div>
+          <div class="field"><label for="summary">简介 <span class="optional">选填</span></label><textarea id="summary" name="summary" rows="2" maxlength="500" placeholder="在作品目录中显示的一小段介绍"></textarea></div>
+          <div id="series-fields" class="field-row" hidden><div class="field"><label for="series">小说名称 <span class="optional">短篇可留空</span></label><input id="series" name="series" maxlength="120" placeholder="同一部小说使用相同名称"></div><div class="field"><label for="order">章节顺序</label><input id="order" name="order" type="number" min="1" step="1" placeholder="1"></div></div>
+          <div class="body-header"><label for="body">正文</label><div class="view-tabs" role="tablist" aria-label="编辑与预览"><button type="button" role="tab" id="edit-tab" aria-selected="true" aria-controls="edit-panel" tabindex="0">编辑</button><button type="button" role="tab" id="preview-tab" aria-selected="false" aria-controls="preview-panel" tabindex="-1">预览</button></div></div>
+          <div id="edit-panel" role="tabpanel" aria-labelledby="edit-tab"><textarea id="body" name="body" class="body-editor" placeholder="在这里开始，或者导入一份 Word 文档。" required></textarea></div>
+          <div id="preview-panel" role="tabpanel" aria-labelledby="preview-tab" class="preview-panel" hidden><h2 id="preview-title"></h2><div id="preview-body" class="prose"></div></div>
+          <div class="editor-footnote"><span id="word-count">0 字</span><span id="draft-status">未保存</span></div>
+          <div class="publish-row"><span id="publish-hint">发布后，所有人都可以阅读。</span><button id="publish" class="button primary publish-button" type="submit">发布作品 →</button></div>
+        </form>
+        <div id="deployment" class="deployment" role="status" hidden><p id="deployment-text"></p><div><a id="view-article" target="_blank" rel="noopener noreferrer" hidden>查看作品 ↗</a><button id="check-deployment" class="quiet-button" type="button">检查上线状态</button><a id="workflow-link" target="_blank" rel="noopener noreferrer">查看发布进度 ↗</a></div></div>
+      </section>
+    </div>
+  </main>
+  <dialog id="auth-dialog" aria-labelledby="auth-title">
+    <div class="dialog-heading"><h2 id="auth-title">连接你的博客</h2><button id="close-auth" type="button" class="quiet-button" aria-label="关闭连接窗口">×</button></div>
+    <p>使用 GitHub 访问令牌连接，仅限博客所有者 <strong>fen-dada</strong>。</p>
+    <ol class="auth-steps"><li>打开 <a id="token-link" href="https://github.com/settings/personal-access-tokens/new?name=Blog+writer&amp;target_name=fen-dada&amp;expires_in=90&amp;contents=write" target="_blank" rel="noopener noreferrer">GitHub 创建访问令牌 ↗</a>。</li><li>在 <strong>Repository access</strong> 中选择 <strong>Only select repositories</strong>，只勾选 <strong>fen-dada.github.io</strong>。</li><li>确认 <strong>Contents</strong> 权限为 <strong>Read and write</strong>，点击 <strong>Generate token</strong>，复制结果到下方。</li></ol>
+    <form id="auth-form"><label for="token">访问令牌</label><input id="token" type="password" autocomplete="off" spellcheck="false" placeholder="github_pat_…" required><p class="help">只发送给 GitHub，仅保留在当前页面内存中。刷新页面后需要重新连接，请妥善保管令牌，不要把它写进作品。</p><p id="auth-error" class="error" role="alert" hidden></p><button id="auth-submit" class="button primary wide" type="submit">连接博客</button></form>
+  </dialog>
+  <noscript><p class="notice">写作台需要开启 JavaScript，博客阅读不受影响。</p></noscript>
+</body>
+</html>

@@ -3,6 +3,8 @@ import path from 'node:path';
 import { createHash } from 'node:crypto';
 import matter from 'gray-matter';
 import { marked } from 'marked';
+import sanitizeHtml from 'sanitize-html';
+import { build } from 'esbuild';
 
 const root = process.cwd();
 const out = path.join(root, 'dist');
@@ -12,6 +14,11 @@ const esc = value => String(value ?? '').replace(/[&<>"']/g, char => ({ '&': '&a
 const arrow = '<span aria-hidden="true">↗</span>';
 const routes = [];
 const year = new Date().getUTCFullYear();
+const renderContent = markdown => sanitizeHtml(marked.parse(markdown), {
+  allowedTags: ['p','br','h1','h2','h3','h4','h5','h6','strong','b','em','i','s','del','blockquote','ul','ol','li','pre','code','a','img','hr','table','thead','tbody','tr','th','td','sup','sub'],
+  allowedAttributes: { a: ['href','title','id'], img: ['src','alt','title'], ol: ['start'], th: ['colspan','rowspan'], td: ['colspan','rowspan'], code: ['class'] },
+  allowedSchemes: ['http','https','mailto'], allowedSchemesByTag: { img: ['https','http','data'] }, allowProtocolRelative: false,
+});
 
 for (const project of projects) {
   if (!project.name || !project.description || !/^https:\/\//.test(project.url)) throw new Error('Invalid project metadata');
@@ -71,10 +78,10 @@ function shell({ title, description = config.description, url, active, content, 
   <header class="site-header wrap">
     <a class="brand" href="/" aria-label="${esc(config.name)} 首页">${esc(config.name)}<span class="brand-point" aria-hidden="true">.</span></a>
     <nav aria-label="主导航">${nav.map(([href,label,key]) => `<a href="${href}"${key === active ? ' aria-current="page"' : ''}>${label}</a>`).join('')}</nav>
-    <a class="github-link" href="${esc(config.github)}" target="_blank" rel="noopener noreferrer" aria-label="GitHub（新窗口打开）">GitHub ${arrow}</a>
+    <a class="github-link" href="/admin/">写作台 ${arrow}</a>
   </header>
   <main id="main" class="wrap${article ? ' reading-wrap' : ''}">${content}</main>
-  <footer class="site-footer wrap"><span>© ${year} ${esc(config.name)}</span><span>项目、随笔与小说<span class="footer-separator" aria-hidden="true"> / </span><a href="${esc(config.github)}">GitHub ${arrow}</a></span></footer>
+  <footer class="site-footer wrap"><span>© ${year} ${esc(config.name)}</span><span><a href="/admin/">写作台</a><span class="footer-separator" aria-hidden="true"> / </span><a href="${esc(config.github)}">GitHub ${arrow}</a></span></footer>
 </body>
 </html>`;
 }
@@ -116,6 +123,10 @@ await mkdir(out, { recursive: true });
 await copyFile('assets/style.css', path.join(out, 'style.css'));
 await copyFile('assets/favicon.svg', path.join(out, 'favicon.svg'));
 await writeFile(path.join(out, '.nojekyll'), '');
+await mkdir(path.join(out, 'admin'), { recursive: true });
+await copyFile('admin/index.html', path.join(out, 'admin/index.html'));
+await copyFile('admin/admin.css', path.join(out, 'admin/admin.css'));
+await build({ absWorkingDir: root, entryPoints: [path.join(root,'admin/main.js')], tsconfigRaw: {}, outdir: path.join(out,'admin'), entryNames: 'admin', chunkNames: 'chunks/[name]-[hash]', bundle: true, splitting: true, format: 'esm', platform: 'browser', target: ['es2022'], minify: true, sourcemap: false, legalComments: 'eof' });
 
 await page('/', { active: 'home', content: `
   <section class="home-intro" aria-labelledby="home-title">
@@ -151,7 +162,7 @@ for (const post of [...essays, ...fiction]) {
   const backLabel = book ? book.name + ' · 目录' : post.type === 'essays' ? '全部随笔' : '返回书架';
   await page(post.url, { title: post.title, description: post.summary || config.description, active: post.type, article: true, content: `
     <a class="back-link" href="${backUrl}">← ${esc(backLabel)}</a>
-    <article><header class="article-header"><p class="eyebrow">${post.type === 'essays' ? '随笔 / NOTES' : '小说 / STORIES'}</p><h1>${esc(post.title)}</h1><div class="article-meta"><time datetime="${post.date}">${post.date.replaceAll('-','.')}</time><span>约 ${post.minutes} 分钟</span></div>${post.summary ? `<p class="article-summary">${esc(post.summary)}</p>` : ''}</header><div class="prose">${marked.parse(post.content)}</div><div class="article-end" aria-hidden="true">— ${book ? '本章完' : '完'} —</div></article>
+    <article><header class="article-header"><p class="eyebrow">${post.type === 'essays' ? '随笔 / NOTES' : '小说 / STORIES'}</p><h1>${esc(post.title)}</h1><div class="article-meta"><time datetime="${post.date}">${post.date.replaceAll('-','.')}</time><span>约 ${post.minutes} 分钟</span></div>${post.summary ? `<p class="article-summary">${esc(post.summary)}</p>` : ''}</header><div class="prose">${renderContent(post.content)}</div><div class="article-end" aria-hidden="true">— ${book ? '本章完' : '完'} —</div></article>
     ${book ? `<nav class="chapter-nav" aria-label="章节导航">${prev ? `<a href="${prev.url}"><span>← 上一章</span><strong>${esc(prev.title)}</strong></a>` : '<div></div>'}${next ? `<a class="next-chapter" href="${next.url}"><span>下一章 →</span><strong>${esc(next.title)}</strong></a>` : `<a class="next-chapter" href="${book.url}"><span>返回目录 →</span><strong>${esc(book.name)}</strong></a>`}</nav>` : `<a class="text-link article-back" href="${backUrl}">← ${esc(backLabel)}</a>`}` });
 }
 
