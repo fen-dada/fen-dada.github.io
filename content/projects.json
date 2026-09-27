@@ -1,0 +1,30 @@
+[
+  {
+    "name": "CFToday",
+    "description": "一个关于 Codeforces 的 iOS 应用。",
+    "language": "Swift",
+    "category": "移动应用",
+    "url": "https://github.com/fen-dada/CFToday"
+  },
+  {
+    "name": "Calculator",
+    "description": "基于 STM32 的计算器演示项目。",
+    "language": "C",
+    "category": "嵌入式",
+    "url": "https://github.com/fen-dada/Calculator"
+  },
+  {
+    "name": "neovim-config",
+    "description": "用 Lua 配置自己的 Neovim 编辑器。",
+    "language": "Lua",
+    "category": "开发工具",
+    "url": "https://github.com/fen-dada/neovim-config"
+  },
+  {
+    "name": "wezterm",
+    "description": "我的 WezTerm 终端配置。",
+    "language": "Lua",
+    "category": "开发工具",
+    "url": "https://github.com/fen-dada/wezterm"
+  }
+]
