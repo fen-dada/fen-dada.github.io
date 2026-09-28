@@ -128,9 +128,11 @@ function shell({title,description=config.description,url,active,content,article=
 <link rel="icon" type="image/svg+xml" href="/favicon.svg"><link rel="stylesheet" href="/style.css">
 </head><body>
 <a class="skip-link" href="#main">跳到正文</a>
+<div class="site-layout">
 <header class="wrap"><a class="site-name" href="/">${esc(config.name)}</a><nav aria-label="主导航">${nav.map(([href,label,key])=>`<a href="${href}"${key===active?' aria-current="page"':''}>${label}</a>`).join('')}</nav></header>
-<main id="main" class="wrap${article?' article':''}">${content}</main>
+<main id="main" class="wrap${article?' article':''}${active==='home'?' home-layout':''}${active==='projects'?' project-index':''}">${content}</main>
 <footer class="wrap"><a href="${esc(config.github)}">GitHub</a><a href="/admin/">管理</a></footer>
+</div>
 </body></html>`;
 }
 
