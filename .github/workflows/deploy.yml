@@ -14,9 +14,12 @@ concurrency:
 
 jobs:
   build:
+    if: github.repository == 'fen-dada/fen-dada.github.io' && github.actor_id == '116545007'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: '22'
