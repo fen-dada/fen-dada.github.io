@@ -1,5 +1,5 @@
-import { readFile, readdir, mkdir, writeFile, copyFile, rm, stat } from 'node:fs/promises';
-import { execFileSync } from 'node:child_process';
+import { readFile, readdir, mkdir, writeFile, copyFile, rm } from 'node:fs/promises';
+import { articleDates, firstUploadDate, manuscriptParagraph } from './article-meta.mjs';
 import path from 'node:path';
 import { createHash } from 'node:crypto';
 import matter from 'gray-matter';
@@ -40,14 +40,6 @@ function decodeText(buffer) {
   catch { return new TextDecoder('gb18030').decode(buffer); }
 }
 
-async function fileDate(filename) {
-  try {
-    const date = execFileSync('git',['log','-1','--format=%cs','--',filename],{cwd:root,encoding:'utf8',stdio:['ignore','pipe','ignore']}).trim();
-    if (/^\d{4}-\d{2}-\d{2}$/.test(date)) return date;
-  } catch { /* Uncommitted files use their filesystem date for local preview. */ }
-  return (await stat(filename)).mtime.toISOString().slice(0,10);
-}
-
 async function posts(type) {
   const directory = `content/${type}`;
   const files = await walk(directory);
@@ -58,6 +50,13 @@ async function posts(type) {
     const basename = path.basename(relative,path.extname(relative));
     const buffer = await readFile(filename);
     if (buffer.length > 25 * 1024 * 1024) throw new Error(`${filename}: 文件超过 25 MB，请拆分章节或压缩图片。`);
+    const metadataPath = `${filename}.meta.json`;
+    let metadata = {}, hasMetadata = false;
+    try {
+      metadata = JSON.parse(await readFile(metadataPath,'utf8'));
+      if (!metadata || Array.isArray(metadata) || typeof metadata !== 'object') throw new Error('应为 JSON 对象');
+      hasMetadata = true;
+    } catch (error) { if (error.code !== 'ENOENT') throw new Error(`${metadataPath}: ${error.message}`); }
     let data = {}, content = '', html = '';
     if (extension === '.md') {
       ({data,content} = matter(decodeText(buffer)));
@@ -69,6 +68,7 @@ async function posts(type) {
     } else {
       const result = await mammoth.convertToHtml({buffer},{
         externalFileAccess:false,
+        transformDocument:mammoth.transforms.paragraph(manuscriptParagraph),
         convertImage:mammoth.images.imgElement(async image=>{
           const ext = {'image/png':'png','image/jpeg':'jpg','image/gif':'gif','image/webp':'webp'}[image.contentType];
           if (!ext) { warnings.push(`${filename}: 未转换的图片格式 ${image.contentType}`); return {src:'',alt:'图片格式不受支持'}; }
@@ -87,8 +87,7 @@ async function posts(type) {
     const title = data.title ?? basename;
     if (typeof title !== 'string' || !title.trim()) throw new Error(`${filename}: 缺少标题。`);
     if (!content.trim() && !/<img\b/.test(html)) throw new Error(`${filename}: 没有读取到正文。`);
-    const date = data.date instanceof Date ? data.date.toISOString().slice(0,10) : String(data.date ?? await fileDate(filename));
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(date) || Number.isNaN(Date.parse(date)) || new Date(date).toISOString().slice(0,10)!==date) throw new Error(`${filename}: 日期应为 YYYY-MM-DD。`);
+    const {writtenAt,uploadedAt} = articleDates(data,metadata,firstUploadDate(filename,root));
     const folder = path.posix.dirname(relative);
     const series = data.series ?? (type === 'fiction' && folder !== '.' ? folder : undefined);
     let order = data.order;
@@ -102,10 +101,10 @@ async function posts(type) {
       if (!Number.isInteger(order) || order < 1) throw new Error(`${filename}: 章节序号应为正整数。`);
     }
     const slug = extension === '.md' && folder === '.' && /^[a-z0-9][a-z0-9_-]*$/.test(basename) ? basename : `${extension.slice(1)}-${hash(relative).slice(0,16)}`;
-    list.push({manuscript:data.format==='manuscript',source:filename,download:`/downloads/${type}/${hash(relative).slice(0,16)}${extension}`,extension, title:title.trim(),date,summary:typeof data.summary==='string'?data.summary:'',series,order,html,type,slug,url:`/${type}/${slug}/`});
+    list.push({manuscript:extension==='.docx'||data.format==='manuscript',metadataPath,hasMetadata,source:filename,download:`/downloads/${type}/${hash(relative).slice(0,16)}${extension}`,extension, title:title.trim(),writtenAt,uploadedAt,summary:typeof data.summary==='string'?data.summary:'',series,order,html,type,slug,url:`/${type}/${slug}/`});
   }
   if (new Set(list.map(p=>p.slug)).size!==list.length) throw new Error(`${type}: 文章地址重复。`);
-  return list.sort((a,b)=>b.date.localeCompare(a.date)||a.title.localeCompare(b.title,'zh-CN',{numeric:true}));
+  return list.sort((a,b)=>b.uploadedAt.localeCompare(a.uploadedAt)||a.title.localeCompare(b.title,'zh-CN',{numeric:true}));
 }
 
 const essays = await posts('essays');
@@ -161,7 +160,7 @@ async function page(url,options) {
 }
 
 const resources = [
-  ...projects.map(p=>({title:p.name,description:p.description,type:'projects',kind:p.category,format:p.language,url:p.url,date:'',symbol:'code'})),
+  ...projects.map(p=>({title:p.name,description:p.description,type:'projects',kind:p.category,format:p.language,url:p.url,uploadedAt:'',writtenAt:'',symbol:'code'})),
   ...essays.map(p=>({...p,description:p.summary,kind:'随笔',format:p.extension.slice(1).toUpperCase(),symbol:'file'})),
   ...fiction.map(p=>({...p,description:p.summary||p.series||'',kind:p.series?'连载章节':'小说',format:p.extension.slice(1).toUpperCase(),symbol:'book'})),
 ];
@@ -169,11 +168,11 @@ const empty = text=>`<div class="empty-state">${icon('folder')}<p>${text}</p></d
 function resourceLibrary(items, active) {
   return `<section class="library" data-library aria-label="内容列表">
 <div class="library-toolbar"><div class="search-field">${icon('search')}<label class="sr-only" for="resource-search">搜索内容</label><input id="resource-search" type="search" placeholder="搜索名称、简介或类型" autocomplete="off" disabled></div>
-<div class="toolbar-options"><label class="sr-only" for="resource-sort">排序方式</label><select id="resource-sort" disabled><option value="default">默认排序</option><option value="name">名称 A–Z</option><option value="newest">最新文章</option></select><div class="view-switch" role="group" aria-label="视图"><button type="button" data-view="list" aria-label="列表视图" aria-pressed="true" disabled>${icon('list')}</button><button type="button" data-view="grid" aria-label="网格视图" aria-pressed="false" disabled>${icon('grid')}</button></div></div></div>
+<div class="toolbar-options"><label class="sr-only" for="resource-sort">排序方式</label><select id="resource-sort" disabled><option value="default">默认排序</option><option value="name">名称 A–Z</option><option value="newest">最近上传</option><option value="written">最近写作</option></select><div class="view-switch" role="group" aria-label="视图"><button type="button" data-view="list" aria-label="列表视图" aria-pressed="true" disabled>${icon('list')}</button><button type="button" data-view="grid" aria-label="网格视图" aria-pressed="false" disabled>${icon('grid')}</button></div></div></div>
 <div class="filter-row"><div class="filters" role="group" aria-label="筛选内容">${(active==='home'?[['all','全部'],['projects','项目'],['essays','随笔'],['fiction','小说']]:[['all','全部']]).map(([key,label],i)=>`<button type="button" data-filter="${key}" aria-pressed="${i===0}" disabled>${label}</button>`).join('')}</div><span class="result-count" role="status" aria-live="polite">${items.length} 项</span></div>
 <noscript><p class="muted small">搜索、筛选和视图切换需要启用 JavaScript；下方内容可以直接打开。</p></noscript>
 <div class="table-heading" aria-hidden="true"><span>名称</span><span>类型</span><span>格式 / 语言</span><span>操作</span></div>
-<ul class="resource-list">${items.map((p,i)=>`<li class="resource" data-type="${p.type}" data-search="${esc([p.title,p.description,p.kind,p.format].join(' ').toLowerCase())}" data-title="${esc(p.title)}" data-date="${p.date}" data-order="${i}"><a class="resource-main" href="${esc(p.url)}"><span class="resource-icon ${p.type}">${icon(p.symbol)}</span><span class="resource-copy"><span class="resource-name">${esc(p.title)}</span>${p.description?`<span class="resource-description">${esc(p.description)}</span>`:''}</span></a><span class="resource-kind">${esc(p.kind)}</span><span class="resource-format">${esc(p.format)}</span><span class="resource-actions">${p.download?`<a href="${esc(p.download)}" download="${esc(path.basename(p.source))}" aria-label="下载 ${esc(p.title)} 的原文件">${icon('download')}</a>`:''}<a href="${esc(p.url)}" aria-label="${p.type==='projects'?'打开项目':'阅读'} ${esc(p.title)}">${icon('arrow')}</a></span></li>`).join('')}</ul>
+<ul class="resource-list">${items.map((p,i)=>`<li class="resource" data-type="${p.type}" data-search="${esc([p.title,p.description,p.kind,p.format].join(' ').toLowerCase())}" data-title="${esc(p.title)}" data-date="${p.uploadedAt}" data-written="${p.writtenAt}" data-order="${i}"><a class="resource-main" href="${esc(p.url)}"><span class="resource-icon ${p.type}">${icon(p.symbol)}</span><span class="resource-copy"><span class="resource-name">${esc(p.title)}</span>${p.description?`<span class="resource-description">${esc(p.description)}</span>`:''}${p.writtenAt?`<span class="resource-dates">写作 ${p.writtenAt} · 上传 ${p.uploadedAt}</span>`:''}</span></a><span class="resource-kind">${esc(p.kind)}</span><span class="resource-format">${esc(p.format)}</span><span class="resource-actions">${p.download?`<a href="${esc(p.download)}" download="${esc(path.basename(p.source))}" aria-label="下载 ${esc(p.title)} 的原文件">${icon('download')}</a>`:''}<a href="${esc(p.url)}" aria-label="${p.type==='projects'?'打开项目':'阅读'} ${esc(p.title)}">${icon('arrow')}</a></span></li>`).join('')}</ul>
 <div class="empty-state" data-empty${items.length?' hidden':''}>${icon('folder')}<p data-empty-label>暂无${active==='home'?'内容':labels[active]}。</p><button class="clear-search" type="button" hidden>清除筛选</button></div>
 </section>`;
 }
@@ -201,14 +200,24 @@ for(const post of [...essays,...fiction]){
   const previous=book?.chapters[index-1],next=book?.chapters[index+1];
   await page(post.url,{title:post.title,description:post.summary||config.description,active:post.type,article:true,content:`
 <p class="back"><a href="${book?.url||`/${post.type}/`}">${book?'返回章节目录':post.type==='essays'?'返回随笔':'返回小说'}</a></p>
-<article><h1>${esc(post.title)}</h1><div class="article-meta"><time datetime="${post.date}">${post.date}</time><a href="${post.download}" download="${esc(path.basename(post.source))}">${icon('download')}下载原文件</a></div><div class="prose${post.manuscript?' manuscript':''}">${post.html}</div></article>
+<article><h1>${esc(post.title)}</h1><div class="article-meta"><div class="article-dates"><span>写作 <time datetime="${post.writtenAt}">${post.writtenAt}</time></span><span>上传 <time datetime="${post.uploadedAt}">${post.uploadedAt}</time></span></div><a href="${post.download}" download="${esc(path.basename(post.source))}">${icon('download')}下载原文件</a></div><div class="prose${post.manuscript?' manuscript':''}">${post.html}</div></article>
 ${book?`<nav class="chapter-nav" aria-label="章节导航">${previous?`<a href="${previous.url}">上一章：${esc(previous.title)}</a>`:'<span></span>'}${next?`<a href="${next.url}">下一章：${esc(next.title)}</a>`:`<a href="${book.url}">章节目录</a>`}</nav>`:''}`});
+}
+function dateEditUrl(post) {
+  const base = 'https://github.com/fen-dada/fen-dada.github.io';
+  if (post.hasMetadata) return `${base}/edit/main/${post.metadataPath.split('/').map(encodeURIComponent).join('/')}`;
+  const query = new URLSearchParams({filename:post.metadataPath,value:JSON.stringify({writtenAt:null},null,2)+'\n'});
+  return `${base}/new/main?${query}`;
 }
 await page('/admin/',{title:'管理',active:'admin',noindex:true,content:`
 <h1>上传文章</h1>
 <p>用 <strong>fen-dada</strong> 登录 GitHub，选择要上传的文件，然后点击 <strong>Commit changes</strong>。网站会自动更新。</p>
 <p class="upload-links"><a href="https://github.com/fen-dada/fen-dada.github.io/upload/main/content/essays">上传随笔</a><a href="https://github.com/fen-dada/fen-dada.github.io/upload/main/content/fiction">上传小说</a></p>
-<p>支持 Word（.docx）、TXT 和 Markdown。Word 和 TXT 的文件名会作为文章标题。</p>
+<p>支持 Word（.docx）、TXT 和 Markdown。Word 和 TXT 的文件名会作为文章标题。Word 正文默认使用仿宋字体、首行缩进两个汉字；小标题按原文保留，没有就不添加。</p>
+<h2>写作时间</h2>
+<p>未填写时，写作时间等于首次上传日期。修改正文不会改变上传日期。</p>
+<p>点击对应文章的“修改”，把 <code>writtenAt</code> 后面的值改为带引号的日期，例如 <code>"2020-06-15"</code>，再点击 <strong>Commit changes</strong>。填写 <code>null</code> 可恢复为上传日期。</p>
+<div class="date-management"><table><thead><tr><th>文章</th><th>写作时间</th><th>上传时间</th><th></th></tr></thead><tbody>${[...essays,...fiction].map(post=>`<tr><td><a href="${post.url}">${esc(post.title)}</a></td><td>${post.writtenAt}</td><td>${post.uploadedAt}</td><td><a href="${esc(dateEditUrl(post))}" aria-label="修改 ${esc(post.title)} 的写作时间">修改</a></td></tr>`).join('')}</tbody></table></div>
 <h2>连载小说</h2><p>把章节放在以小说名称命名的文件夹里，文件名以序号开头，再将整个文件夹拖入小说上传页面。</p>
 <pre class="example">小说名称/
   01 开篇.docx

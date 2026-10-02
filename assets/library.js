@@ -21,6 +21,7 @@ if (library) {
     }
     const ordered = [...items].sort((a, b) => {
       if (sort.value === 'name') return a.dataset.title.localeCompare(b.dataset.title, 'zh-CN', {numeric:true});
+      if (sort.value === 'written') return b.dataset.written.localeCompare(a.dataset.written) || Number(a.dataset.order) - Number(b.dataset.order);
       if (sort.value === 'newest') return b.dataset.date.localeCompare(a.dataset.date) || Number(a.dataset.order) - Number(b.dataset.order);
       return Number(a.dataset.order) - Number(b.dataset.order);
     });

@@ -63,3 +63,8 @@ footer{display:flex;gap:14px;padding:20px 42px;border-top:1px solid var(--line);
 .prose.manuscript>h2:first-child{margin-top:0}
 @media(max-width:540px){.prose.manuscript{font-size:16px}}
 @media print{.prose.manuscript{font-size:14pt}}
+
+.article-dates{display:flex;flex-wrap:wrap;gap:8px 22px}.article-dates span{white-space:nowrap}
+.resource-dates{display:block;color:var(--muted);font-size:10px;line-height:1.7;margin-top:5px}
+.date-management{overflow-x:auto;margin:24px 0 36px}.date-management table{width:100%;border-collapse:collapse;font-size:13px;text-align:left}.date-management th,.date-management td{padding:12px 14px;border-bottom:1px solid var(--line);white-space:nowrap}.date-management th{font-weight:500;color:var(--muted)}.date-management a{color:var(--blue)}
+@media(max-width:540px){.article-dates{flex-direction:column;gap:6px}.resource-dates{font-size:9px}.date-management th,.date-management td{padding:10px 8px;font-size:11px}}
