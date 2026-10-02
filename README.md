@@ -74,3 +74,11 @@ npm run preview
 浏览器打开 http://127.0.0.1:4173/ 。
 
 文章放在 `content/essays/`、`content/fiction/`；项目列表在 `content/projects.json`；页面样式在 `assets/style.css`；生成逻辑在 `scripts/build.mjs`。`dist/` 是构建产物，不要手动编辑。
+
+## 页面界面
+
+首页集中显示项目、随笔和小说，可按分类、名称、简介、格式或语言搜索；支持列表/网格视图和名称/文章日期排序。视图偏好只保存在当前浏览器。页面在关闭 JavaScript 时仍可浏览内容和打开链接。
+
+文章阅读页和内容列表提供原文件下载，保留上传时的文件名。只有公开文章会复制到网站的 `downloads/` 目录；`draft: true` 的文章不会生成下载文件。原稿所在的 GitHub 仓库仍然是公开的。
+
+界面样式在 `assets/style.css`，搜索、筛选和视图切换在 `assets/library.js`。
