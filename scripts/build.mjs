@@ -102,7 +102,7 @@ async function posts(type) {
       if (!Number.isInteger(order) || order < 1) throw new Error(`${filename}: 章节序号应为正整数。`);
     }
     const slug = extension === '.md' && folder === '.' && /^[a-z0-9][a-z0-9_-]*$/.test(basename) ? basename : `${extension.slice(1)}-${hash(relative).slice(0,16)}`;
-    list.push({source:filename,download:`/downloads/${type}/${hash(relative).slice(0,16)}${extension}`,extension, title:title.trim(),date,summary:typeof data.summary==='string'?data.summary:'',series,order,html,type,slug,url:`/${type}/${slug}/`});
+    list.push({manuscript:data.format==='manuscript',source:filename,download:`/downloads/${type}/${hash(relative).slice(0,16)}${extension}`,extension, title:title.trim(),date,summary:typeof data.summary==='string'?data.summary:'',series,order,html,type,slug,url:`/${type}/${slug}/`});
   }
   if (new Set(list.map(p=>p.slug)).size!==list.length) throw new Error(`${type}: 文章地址重复。`);
   return list.sort((a,b)=>b.date.localeCompare(a.date)||a.title.localeCompare(b.title,'zh-CN',{numeric:true}));
@@ -201,7 +201,7 @@ for(const post of [...essays,...fiction]){
   const previous=book?.chapters[index-1],next=book?.chapters[index+1];
   await page(post.url,{title:post.title,description:post.summary||config.description,active:post.type,article:true,content:`
 <p class="back"><a href="${book?.url||`/${post.type}/`}">${book?'返回章节目录':post.type==='essays'?'返回随笔':'返回小说'}</a></p>
-<article><h1>${esc(post.title)}</h1><div class="article-meta"><time datetime="${post.date}">${post.date}</time><a href="${post.download}" download="${esc(path.basename(post.source))}">${icon('download')}下载原文件</a></div><div class="prose">${post.html}</div></article>
+<article><h1>${esc(post.title)}</h1><div class="article-meta"><time datetime="${post.date}">${post.date}</time><a href="${post.download}" download="${esc(path.basename(post.source))}">${icon('download')}下载原文件</a></div><div class="prose${post.manuscript?' manuscript':''}">${post.html}</div></article>
 ${book?`<nav class="chapter-nav" aria-label="章节导航">${previous?`<a href="${previous.url}">上一章：${esc(previous.title)}</a>`:'<span></span>'}${next?`<a href="${next.url}">下一章：${esc(next.title)}</a>`:`<a href="${book.url}">章节目录</a>`}</nav>`:''}`});
 }
 await page('/admin/',{title:'管理',active:'admin',noindex:true,content:`

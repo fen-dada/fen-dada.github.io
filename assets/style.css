@@ -55,3 +55,11 @@ footer{display:flex;gap:14px;padding:20px 42px;border-top:1px solid var(--line);
 @media(max-width:359px){main{padding-inline:16px}.sidebar{padding-inline:12px}.sidebar nav a{padding-inline:8px}.library[data-layout=grid] .resource-list{grid-template-columns:1fr}.folders{gap:7px}.folder-link{padding-inline:9px}}
 @media(prefers-reduced-motion:reduce){*,*::before,*::after{transition:none!important;scroll-behavior:auto!important}}
 @media print{body{background:white}.site-layout{display:block}.sidebar,.topbar,footer,.back,.chapter-nav,.article-meta a{display:none}main{padding:0}.article{max-width:none}.prose{font-size:12pt}}
+
+/* Manuscript paragraphs retain a two-character first-line indent. */
+.prose.manuscript{font-family:FangSong,STFangsong,"仿宋","Songti SC",SimSun,serif;font-size:18px;line-height:1.95}
+.manuscript>p{text-indent:2em;margin:0 0 .65em}
+.prose.manuscript>h2{text-align:center;font-size:1em;font-weight:400;line-height:1.5;margin:2.5em 0 1.5em;text-indent:0}
+.prose.manuscript>h2:first-child{margin-top:0}
+@media(max-width:540px){.prose.manuscript{font-size:16px}}
+@media print{.prose.manuscript{font-size:14pt}}
