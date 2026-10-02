@@ -223,7 +223,7 @@ await page('/admin/',{title:'管理',active:'admin',noindex:true,content:`
   01 开篇.docx
   02 第二章.docx</pre>
 <h2>修改和删除</h2><p>进入 <a href="https://github.com/fen-dada/fen-dada.github.io/tree/main/content/essays">随笔文件夹</a> 或 <a href="https://github.com/fen-dada/fen-dada.github.io/tree/main/content/fiction">小说文件夹</a>，用同名文件替换原稿，或者删除文件。提交后会自动更新。</p>
-<p class="muted">目前只有你的账号有仓库写入权限，访客不能发布文章。上传的原文件也会保存在公开仓库中。</p>
+<p class="muted">上传和修改需要 GitHub 仓库写入权限；网站只接受 fen-dada 账号触发的发布。上传的原文件也会保存在公开仓库中。</p>
 <p class="small"><a href="https://github.com/fen-dada/fen-dada.github.io/actions/workflows/deploy.yml">查看发布状态</a> · <a href="/admin/draft-backup.html">取回旧编辑器的本机草稿</a></p>`});
 await page('/404.html',{title:'页面不存在',active:'',content:'<h1>页面不存在</h1><p><a href="/">返回首页</a></p>'});
 await mkdir(path.join(out,'admin'),{recursive:true});

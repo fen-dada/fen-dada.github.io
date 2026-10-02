@@ -13,7 +13,7 @@
 
 也可以直接打开 [随笔上传](https://github.com/fen-dada/fen-dada.github.io/upload/main/content/essays) 或 [小说上传](https://github.com/fen-dada/fen-dada.github.io/upload/main/content/fiction)。
 
-不需要访问令牌，也不需要另注册后台账号。登录和写入权限由 GitHub 校验。目前仓库只有 `fen-dada` 有写入权限；发布工作流也只允许这个账号触发。访客可以阅读公开仓库，但不能直接发布到你的网站。不要向其他账号授予仓库写入权限。
+不需要访问令牌，也不需要另注册后台账号。登录和写入权限由 GitHub 校验。发布工作流只允许 `fen-dada` 在 `main` 分支触发（包括重新运行）。仓库的协作者和访问权限需在 GitHub 设置中核查。访客可以阅读公开仓库，但不能直接发布到你的网站。不要向其他账号授予仓库写入权限。
 
 ## Word 与 TXT
 

@@ -14,7 +14,7 @@ concurrency:
 
 jobs:
   build:
-    if: github.repository == 'fen-dada/fen-dada.github.io' && github.actor_id == '116545007'
+    if: github.repository == 'fen-dada/fen-dada.github.io' && github.ref == 'refs/heads/main' && github.actor_id == '116545007' && github.triggering_actor == 'fen-dada'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -31,6 +31,7 @@ jobs:
         with:
           path: dist
   deploy:
+    if: github.repository == 'fen-dada/fen-dada.github.io' && github.ref == 'refs/heads/main' && github.actor_id == '116545007' && github.triggering_actor == 'fen-dada'
     needs: build
     runs-on: ubuntu-latest
     permissions:
