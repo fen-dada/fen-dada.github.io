@@ -131,7 +131,7 @@ const icons = {
 const icon = (name,cls='')=>`<svg class="icon ${cls}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]||icons.file}</svg>`;
 const labels = {home:'全部内容',projects:'项目',essays:'随笔',fiction:'小说',admin:'管理'};
 function shell({title,description=config.description,url,active,content,article=false,noindex=false}) {
-  const nav=[['/','全部内容','home','grid',projects.length+essays.length+fiction.length],['/projects/','项目','projects','code',projects.length],['/essays/','随笔','essays','file',essays.length],['/fiction/','小说','fiction','book',fiction.length]];
+  const nav=[['/','全部内容','home','grid',projects.length+essays.length+fiction.length],['/projects/','项目','projects','code',projects.length],['/essays/','随笔','essays','file',essays.length],['/fiction/','小说','fiction','book',fiction.length],['/Obsidian/','算法板子','boards','code',null]];
   return `<!doctype html>
 <html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -144,7 +144,7 @@ function shell({title,description=config.description,url,active,content,article=
 <a class="skip-link" href="#main">跳到正文</a>
 <div class="site-layout">
 <aside class="sidebar"><a class="site-name" href="/" aria-label="${esc(config.name)} 首页"><span class="site-mark" aria-hidden="true">fd</span><span>${esc(config.name)}<small>个人记录</small></span></a>
-<p class="nav-label">内容</p><nav aria-label="主导航">${nav.map(([href,label,key,symbol,count])=>`<a href="${href}"${key===active?' aria-current="page"':''}>${icon(symbol)}<span>${label}</span><span class="nav-count">${count}</span></a>`).join('')}</nav>
+<p class="nav-label">内容</p><nav aria-label="主导航">${nav.map(([href,label,key,symbol,count])=>`<a href="${href}"${key===active?' aria-current="page"':''}>${icon(symbol)}<span>${label}</span>${count===null?'':`<span class="nav-count">${count}</span>`}</a>`).join('')}</nav>
 <div class="sidebar-bottom"><a href="${esc(config.github)}">${icon('arrow')}<span>GitHub</span></a><a href="/admin/"${active==='admin'?' aria-current="page"':''}>${icon('settings')}<span>管理</span></a></div></aside>
 <div class="workspace"><header class="topbar"><nav class="breadcrumb" aria-label="当前位置"><a href="/">${esc(config.name)}</a><span aria-hidden="true">/</span><span>${esc(labels[active]||title||'个人记录')}</span></nav><a class="upload-button" href="/admin/">${icon('plus')}上传文章</a></header>
 <main id="main" class="${article?'article':''}">${content}</main>
@@ -188,8 +188,8 @@ await copyFile('assets/favicon.svg',path.join(out,'favicon.svg'));
 await writeFile(path.join(out,'.nojekyll'),'');
 if(media.size){await mkdir(path.join(out,'media'),{recursive:true});for(const [filename,bytes] of media)await writeFile(path.join(out,'media',filename),bytes);}
 
-await page('/',{active:'home',content:`${pageHeading('全部内容','项目、随笔和小说。')}
-<nav class="folders" aria-label="内容分类">${[['projects','项目',projects.length,'code'],['essays','随笔',essays.length,'file'],['fiction','小说',fiction.length,'book']].map(([type,label,count,symbol])=>`<a class="folder-link" href="/${type}/"><span class="folder-icon ${type}">${icon('folder')}</span><span><strong>${label}</strong><span class="folder-count">${count} ${type==='projects'?'个项目':'篇'}</span></span>${icon('arrow','folder-arrow')}</a>`).join('')}</nav>${resourceLibrary(resources,'home')}`});
+await page('/',{active:'home',content:`${pageHeading('全部内容','项目、随笔、小说和算法板子。')}
+<nav class="folders" aria-label="内容分类">${[['projects','项目',projects.length,'code'],['essays','随笔',essays.length,'file'],['fiction','小说',fiction.length,'book'],['boards','算法板子',null,'code']].map(([type,label,count,symbol])=>`<a class="folder-link" href="${type==='boards'?'/Obsidian/':`/${type}/`}"><span class="folder-icon ${type}">${icon('folder')}</span><span><strong>${label}</strong><span class="folder-count">${count===null?'PDF 打印版':`${count} ${type==='projects'?'个项目':'篇'}`}</span></span>${icon('arrow','folder-arrow')}</a>`).join('')}</nav>${resourceLibrary(resources,'home')}`});
 await page('/essays/',{title:'随笔',active:'essays',content:`${pageHeading('随笔',`${essays.length} 篇文章`)}${resourceLibrary(resources.filter(p=>p.type==='essays'),'essays')}`});
 await page('/projects/',{title:'项目',active:'projects',content:`${pageHeading('项目',`${projects.length} 个项目`)}${resourceLibrary(resources.filter(p=>p.type==='projects'),'projects')}`});
 await page('/fiction/',{title:'小说',active:'fiction',content:`${pageHeading('小说',`${collections.length} 部连载 · ${fiction.length} 篇`)}${collections.length?`<nav class="book-list" aria-label="连载目录">${collections.map(book=>`<a class="book" href="${book.url}">${icon('book')}<span>${esc(book.name)}</span><span class="muted">${book.chapters.length} 章</span></a>`).join('')}</nav>`:''}${resourceLibrary(resources.filter(p=>p.type==='fiction'),'fiction')}`});
