@@ -130,8 +130,13 @@ const icons = {
 };
 const icon = (name,cls='')=>`<svg class="icon ${cls}" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">${icons[name]||icons.file}</svg>`;
 const labels = {home:'全部内容',projects:'项目',essays:'随笔',fiction:'小说',admin:'管理'};
+function sidebar(active) {
+  const nav=[['/','全部内容','home','grid',projects.length+essays.length+fiction.length],['/projects/','项目','projects','folder',projects.length],['/essays/','随笔','essays','file',essays.length],['/fiction/','小说','fiction','book',fiction.length],['/Obsidian/','算法板子','boards','code',null]];
+  return `<aside class="sidebar"><a class="site-name" href="/" aria-label="${esc(config.name)} 首页"><span class="site-mark" aria-hidden="true">fd</span><span>${esc(config.name)}<small>个人记录</small></span></a>
+<p class="nav-label">内容</p><nav aria-label="主导航">${nav.map(([href,label,key,symbol,count])=>`<a href="${href}"${key===active?' aria-current="page"':''}>${icon(symbol)}<span>${label}</span>${count===null?'':`<span class="nav-count">${count}</span>`}</a>`).join('')}</nav>
+<div class="sidebar-bottom"><a href="${esc(config.github)}">${icon('arrow')}<span>GitHub</span></a><a href="/admin/"${active==='admin'?' aria-current="page"':''}>${icon('settings')}<span>管理</span></a></div></aside>`;
+}
 function shell({title,description=config.description,url,active,content,article=false,noindex=false}) {
-  const nav=[['/','全部内容','home','grid',projects.length+essays.length+fiction.length],['/projects/','项目','projects','code',projects.length],['/essays/','随笔','essays','file',essays.length],['/fiction/','小说','fiction','book',fiction.length],['/Obsidian/','算法板子','boards','code',null]];
   return `<!doctype html>
 <html lang="zh-CN"><head>
 <meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
@@ -143,9 +148,7 @@ function shell({title,description=config.description,url,active,content,article=
 </head><body>
 <a class="skip-link" href="#main">跳到正文</a>
 <div class="site-layout">
-<aside class="sidebar"><a class="site-name" href="/" aria-label="${esc(config.name)} 首页"><span class="site-mark" aria-hidden="true">fd</span><span>${esc(config.name)}<small>个人记录</small></span></a>
-<p class="nav-label">内容</p><nav aria-label="主导航">${nav.map(([href,label,key,symbol,count])=>`<a href="${href}"${key===active?' aria-current="page"':''}>${icon(symbol)}<span>${label}</span>${count===null?'':`<span class="nav-count">${count}</span>`}</a>`).join('')}</nav>
-<div class="sidebar-bottom"><a href="${esc(config.github)}">${icon('arrow')}<span>GitHub</span></a><a href="/admin/"${active==='admin'?' aria-current="page"':''}>${icon('settings')}<span>管理</span></a></div></aside>
+${sidebar(active)}
 <div class="workspace"><header class="topbar"><nav class="breadcrumb" aria-label="当前位置"><a href="/">${esc(config.name)}</a><span aria-hidden="true">/</span><span>${esc(labels[active]||title||'个人记录')}</span></nav><a class="upload-button" href="/admin/">${icon('plus')}上传文章</a></header>
 <main id="main" class="${article?'article':''}">${content}</main>
 <footer><span>${esc(config.name)}</span><span>个人记录</span><a href="${esc(config.github)}">GitHub ${icon('arrow')}</a></footer>
@@ -183,6 +186,12 @@ await rm(out,{recursive:true,force:true});
 await mkdir(out,{recursive:true});
 await copyFile('assets/style.css',path.join(out,'style.css'));
 await copyFile('assets/library.js',path.join(out,'library.js'));
+// The board lives in a separate Pages project but uses this site's sidebar,
+// including current content counts and icons, on every page load.
+await writeFile(path.join(out,'board-sidebar.js'), `{
+  const sidebar = document.querySelector('aside.sidebar');
+  if (sidebar) sidebar.outerHTML = ${JSON.stringify(sidebar('boards'))};
+}\n`);
 for(const post of [...essays,...fiction]){const target=path.join(out,post.download.slice(1));await mkdir(path.dirname(target),{recursive:true});await copyFile(post.source,target);}
 await copyFile('assets/favicon.svg',path.join(out,'favicon.svg'));
 await writeFile(path.join(out,'.nojekyll'),'');
